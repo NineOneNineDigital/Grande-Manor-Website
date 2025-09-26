@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Menu, X, Home } from 'lucide-react';
+import { motion } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import logoImage from "../assets/logos/Grand Manor Homes BW.png";
 
 const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -13,16 +14,16 @@ const Header: React.FC = () => {
       setIsScrolled(window.scrollY > 20);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const navigation = [
-    { name: 'Home', href: '/' },
-    { name: 'About', href: '/about' },
-    { name: 'Portfolio', href: '/portfolio' },
-    { name: 'Services', href: '/services' },
-    { name: 'Contact', href: '/contact' },
+    { name: "Home", href: "/" },
+    { name: "About", href: "/about" },
+    { name: "Portfolio", href: "/portfolio" },
+    { name: "Services", href: "/services" },
+    { name: "Contact", href: "/contact" },
   ];
 
   return (
@@ -30,9 +31,9 @@ const Header: React.FC = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        isScrolled 
-          ? 'bg-luxury-charcoal-dark/90 backdrop-blur-md border-b border-luxury-gold/20' 
-          : 'bg-transparent'
+        isScrolled
+          ? "bg-luxury-charcoal-dark/90 backdrop-blur-md border-b border-luxury-gold/20"
+          : "bg-transparent"
       }`}
     >
       <nav className="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12">
@@ -40,12 +41,12 @@ const Header: React.FC = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="relative">
-              <Home className="h-10 w-10 text-luxury-gold group-hover:text-luxury-gold-light transition-colors duration-300" />
+              <img
+                src={logoImage}
+                alt="Grande Manor Homes"
+                className="h-12 w-auto transition-all duration-300 group-hover:scale-105"
+              />
               <div className="absolute inset-0 bg-luxury-gold/20 rounded-full blur-lg group-hover:bg-luxury-gold/30 transition-all duration-300"></div>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-playfair font-medium text-white tracking-wide">Grande Manor</span>
-              <span className="text-xs text-luxury-gold font-medium tracking-widest uppercase">Homes</span>
             </div>
           </Link>
 
@@ -56,7 +57,9 @@ const Header: React.FC = () => {
                 key={item.name}
                 to={item.href}
                 className={`relative text-sm font-medium tracking-wide transition-all duration-300 hover:text-luxury-gold group ${
-                  location.pathname === item.href ? 'text-luxury-gold' : 'text-gray-300'
+                  location.pathname === item.href
+                    ? "text-luxury-gold"
+                    : "text-gray-300"
                 }`}
               >
                 {item.name}
@@ -77,7 +80,11 @@ const Header: React.FC = () => {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="text-gray-300 hover:text-luxury-gold transition-colors duration-300 p-2"
             >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </button>
           </div>
         </div>
@@ -97,7 +104,9 @@ const Header: React.FC = () => {
                   to={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`text-base font-medium transition-colors duration-300 hover:text-luxury-gold px-2 py-1 ${
-                    location.pathname === item.href ? 'text-luxury-gold' : 'text-gray-300'
+                    location.pathname === item.href
+                      ? "text-luxury-gold"
+                      : "text-gray-300"
                   }`}
                 >
                   {item.name}

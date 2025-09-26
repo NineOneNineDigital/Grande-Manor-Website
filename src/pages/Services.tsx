@@ -71,23 +71,6 @@ const Services: React.FC = () => {
     },
   ];
 
-  const testimonials = [
-    {
-      name: "Jennifer Thompson",
-      role: "Homeowner",
-      content:
-        "The custom home building process was seamless. Grande Manor's attention to detail and craftsmanship exceeded our expectations.",
-      service: "Custom Home Building",
-    },
-    {
-      name: "Maria Santos",
-      role: "Homeowner",
-      content:
-        "The renovation of our historic home was handled with incredible care and expertise. They preserved the character while adding modern amenities.",
-      service: "Renovation & Expansion",
-    },
-  ];
-
   return (
     <div>
       <SEOHead
@@ -250,63 +233,6 @@ const Services: React.FC = () => {
                 </motion.div>
               ))}
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="py-20 bg-dark-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-light text-white mb-6">
-              Client <span className="text-primary-500">Success Stories</span>
-            </h2>
-            <p className="text-xl text-dark-300 max-w-3xl mx-auto">
-              Hear from clients who have experienced the Grande Manor difference
-              across our various services.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={testimonial.name}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="bg-dark-800 p-6 rounded-lg"
-              >
-                <div className="text-primary-500 text-sm font-semibold mb-3">
-                  {testimonial.service}
-                </div>
-                <p className="text-dark-200 mb-6">"{testimonial.content}"</p>
-                <div>
-                  <div className="font-semibold text-white">
-                    {testimonial.name}
-                  </div>
-                  <div className="text-sm text-dark-400">
-                    {testimonial.role}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link
-              to="/contact"
-              className="inline-flex items-center px-8 py-4 bg-primary-500 text-dark-900 font-semibold rounded-lg hover:bg-primary-400 transition-all duration-300 transform hover:scale-105"
-            >
-              Start Your Project
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Link>
           </div>
         </div>
       </section>

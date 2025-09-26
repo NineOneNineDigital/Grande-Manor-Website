@@ -10,27 +10,135 @@ import {
   Square,
   X,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import heroImage1 from "../assets/images/664b4eeaf8db6d1a167016dc_3-print-DJI_0301.jpg";
 import SEOHead from "../components/SEOHead";
-import { getProjectsByCategory, portfolioProjects } from "../data/portfolio";
+// Import Hygraph service for CMS integration
+import { HygraphProject, hygraphService } from "../lib/hygraphService";
 
 const Portfolio: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedProject, setSelectedProject] = useState<number | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Hygraph CMS Integration
+  const [hygraphProjects, setHygraphProjects] = useState<HygraphProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchHygraphData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch portfolio data from Hygraph
+        const portfolioData = await hygraphService.getPortfolioData();
+        setHygraphProjects(portfolioData.projects);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching Hygraph data:", error);
+
+        // Provide more specific error information
+        let errorMessage = "Failed to load portfolio data. ";
+        if (error instanceof Error) {
+          if (error.message.includes("400")) {
+            errorMessage +=
+              "The GraphQL query failed - this usually means your content model fields don't match the expected schema.";
+          } else if (error.message.includes("401")) {
+            errorMessage += "Authentication failed - check your API token.";
+          } else if (error.message.includes("403")) {
+            errorMessage += "Access denied - check your API permissions.";
+          } else if (error.message.includes("404")) {
+            errorMessage += "API endpoint not found - check your API URL.";
+          } else {
+            errorMessage += `Error: ${error.message}`;
+          }
+        }
+
+        setError(errorMessage);
+        setLoading(false);
+      }
+    };
+
+    fetchHygraphData();
+  }, []);
+
+  // Helper function to map Hygraph data to the expected format
+  const mapHygraphProjectToPortfolio = (project: HygraphProject) => {
+    // Since we don't have description or images from Hygraph, use defaults
+    const features = [
+      "Custom luxury home design",
+      "Premium materials and finishes",
+      "Modern architectural features",
+      "Energy-efficient systems",
+      "Smart home technology",
+      "Landscaped outdoor spaces",
+    ];
+
+    // Use actual images from Hygraph if available, otherwise fallback to default
+    const projectImages = [];
+
+    // Add main image if available
+    if (project.mainImage?.url) {
+      projectImages.push(project.mainImage.url);
+    }
+
+    // Add project images if available
+    if (project.projectImages && project.projectImages.length > 0) {
+      projectImages.push(...project.projectImages.map((img) => img.url));
+    }
+
+    // Use fallback if no images available
+    const finalImages = projectImages.length > 0 ? projectImages : [heroImage1];
+
+    return {
+      id: project.id,
+      title: project.projectName || "Untitled Project",
+      location: project.location || "Location TBD",
+      year: project.yearComplete || new Date().getFullYear(),
+      category: (() => {
+        // Map Hygraph projectType to expected category format
+        const typeMapping: { [key: string]: string } = {
+          customBuild: "custom-build",
+          "custom-build": "custom-build",
+          renovation: "renovation",
+        };
+        return typeMapping[project.projectType] || "custom-build";
+      })(),
+      description:
+        "A beautiful custom home built with attention to detail and quality craftsmanship.",
+      features: features,
+      specs: {
+        sqft: project.squareFootage || 0,
+        bedrooms: project.bedrooms || 0,
+        bathrooms: project.bathrooms || 0,
+        lotSize: project.lotSize ? `${project.lotSize} acres` : undefined,
+      },
+      images: {
+        main: finalImages[0], // Use first image as main
+        gallery: finalImages, // Use all available images
+      },
+      awards: [], // Not available in Hygraph
+    };
+  };
 
   const categories = [
     { id: "all", label: "All Projects" },
     { id: "custom-build", label: "Custom Builds" },
     { id: "renovation", label: "Renovations" },
-    { id: "estate", label: "Estates" },
-    { id: "penthouse", label: "Penthouses" },
   ];
 
-  const filteredProjects = getProjectsByCategory(selectedCategory);
+  // Use only Hygraph data
+  const allProjects = hygraphProjects.map(mapHygraphProjectToPortfolio);
+
+  const filteredProjects =
+    selectedCategory === "all"
+      ? allProjects
+      : allProjects.filter((project) => project.category === selectedCategory);
+
   const currentProject = selectedProject
-    ? portfolioProjects.find((p) => p.id === selectedProject)
+    ? allProjects.find((p) => p.id === selectedProject)
     : null;
 
   const nextImage = () => {
@@ -49,8 +157,8 @@ const Portfolio: React.FC = () => {
     }
   };
 
-  const openProject = (projectId: number) => {
-    setSelectedProject(projectId);
+  const openProject = (projectId: string | number) => {
+    setSelectedProject(projectId.toString());
     setCurrentImageIndex(0);
     document.body.style.overflow = "hidden";
   };
@@ -69,7 +177,7 @@ const Portfolio: React.FC = () => {
       "Explore our portfolio of luxury custom homes, renovations, and estates built by Grande Manor Homes.",
     mainEntity: {
       "@type": "ItemList",
-      itemListElement: portfolioProjects.map((project, index) => ({
+      itemListElement: allProjects.map((project, index) => ({
         "@type": "CreativeWork",
         position: index + 1,
         name: project.title,
@@ -157,72 +265,129 @@ const Portfolio: React.FC = () => {
       {/* Portfolio Grid */}
       <section className="py-20 bg-dark-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProjects.map((project, index) => (
-              <motion.div
-                key={project.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -10 }}
-                className="group cursor-pointer"
-                onClick={() => openProject(project.id)}
-              >
-                <div className="relative overflow-hidden rounded-lg bg-dark-800">
-                  <img
-                    src={project.images.main}
-                    alt={project.title}
-                    className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-transparent to-transparent"></div>
+          {loading && (
+            <div className="text-center py-20">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+              <p className="text-dark-300 mt-4">Loading portfolio...</p>
+            </div>
+          )}
 
-                  {/* Category Badge */}
-                  <div className="absolute top-4 left-4">
-                    <span className="bg-primary-500/90 text-dark-900 px-3 py-1 rounded-full text-sm font-semibold capitalize">
-                      {project.category.replace("-", " ")}
-                    </span>
-                  </div>
+          {error && (
+            <div className="text-center py-20">
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 max-w-md mx-auto">
+                <p className="text-red-400 mb-4">{error}</p>
+                <p className="text-dark-400 text-sm">
+                  Using static data as fallback. Please check your Hygraph
+                  configuration.
+                </p>
+              </div>
+            </div>
+          )}
 
-                  {/* Awards Badge */}
-                  {project.awards && project.awards.length > 0 && (
-                    <div className="absolute top-4 right-4">
-                      <div className="bg-dark-900/80 backdrop-blur-sm rounded-full p-2">
-                        <Award className="h-5 w-5 text-primary-500" />
+          {!loading && !error && (
+            <div>
+              {filteredProjects.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredProjects.map((project, index) => (
+                    <motion.div
+                      key={project.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: index * 0.1 }}
+                      viewport={{ once: true }}
+                      whileHover={{ y: -10 }}
+                      className="group cursor-pointer"
+                      onClick={() => openProject(project.id)}
+                    >
+                      <div className="relative overflow-hidden rounded-lg bg-dark-800">
+                        <img
+                          src={project.images.main}
+                          alt={project.title}
+                          className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-transparent to-transparent"></div>
+
+                        {/* Category Badge */}
+                        <div className="absolute top-4 left-4">
+                          <span className="bg-primary-500/90 text-dark-900 px-3 py-1 rounded-full text-sm font-semibold capitalize">
+                            {project.category.replace("-", " ")}
+                          </span>
+                        </div>
+
+                        {/* Awards Badge */}
+                        {project.awards && project.awards.length > 0 && (
+                          <div className="absolute top-4 right-4">
+                            <div className="bg-dark-900/80 backdrop-blur-sm rounded-full p-2">
+                              <Award className="h-5 w-5 text-primary-500" />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Project Info Overlay */}
+                        <div className="absolute bottom-0 left-0 right-0 p-6">
+                          <h3 className="text-2xl font-playfair font-medium text-white mb-2 group-hover:text-primary-400 transition-colors duration-300">
+                            {project.title}
+                          </h3>
+                          <div className="flex items-center text-dark-300 mb-3">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            <span className="mr-4">{project.location}</span>
+                            <Calendar className="h-4 w-4 mr-2" />
+                            <span>{project.year}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-dark-400">
+                            <div className="flex items-center">
+                              <Square className="h-4 w-4 mr-1" />
+                              {project.specs.sqft.toLocaleString()} sqft
+                            </div>
+                            <div className="flex items-center">
+                              <Bed className="h-4 w-4 mr-1" />
+                              {project.specs.bedrooms}
+                            </div>
+                            <div className="flex items-center">
+                              <Bath className="h-4 w-4 mr-1" />
+                              {project.specs.bathrooms}
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20">
+                  <div className="max-w-md mx-auto">
+                    <div className="w-24 h-24 mx-auto mb-6 bg-dark-800 rounded-full flex items-center justify-center">
+                      <Square className="w-12 h-12 text-gray-400" />
                     </div>
-                  )}
-
-                  {/* Project Info Overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-6">
-                    <h3 className="text-2xl font-playfair font-medium text-white mb-2 group-hover:text-primary-400 transition-colors duration-300">
-                      {project.title}
+                    <h3 className="text-xl font-semibold text-white mb-2">
+                      {hygraphProjects.length === 0
+                        ? "No Projects Available"
+                        : `No ${
+                            selectedCategory === "all"
+                              ? ""
+                              : categories.find(
+                                  (c) => c.id === selectedCategory
+                                )?.label || ""
+                          } Projects Found`}
                     </h3>
-                    <div className="flex items-center text-dark-300 mb-3">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      <span className="mr-4">{project.location}</span>
-                      <Calendar className="h-4 w-4 mr-2" />
-                      <span>{project.year}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-dark-400">
-                      <div className="flex items-center">
-                        <Square className="h-4 w-4 mr-1" />
-                        {project.specs.sqft.toLocaleString()} sqft
-                      </div>
-                      <div className="flex items-center">
-                        <Bed className="h-4 w-4 mr-1" />
-                        {project.specs.bedrooms}
-                      </div>
-                      <div className="flex items-center">
-                        <Bath className="h-4 w-4 mr-1" />
-                        {project.specs.bathrooms}
-                      </div>
-                    </div>
+                    <p className="text-gray-400 mb-6">
+                      {hygraphProjects.length === 0
+                        ? "We're working on adding our latest projects. Please check back soon!"
+                        : "Try selecting a different category to see more projects."}
+                    </p>
+                    {selectedCategory !== "all" && (
+                      <button
+                        onClick={() => setSelectedCategory("all")}
+                        className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200"
+                      >
+                        View All Projects
+                      </button>
+                    )}
                   </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 

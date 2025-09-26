@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { CheckCircle, Clock, Mail, MapPin, Phone, Send } from "lucide-react";
+import { CheckCircle, Clock, MapPin, Phone, Send } from "lucide-react";
 import React, { useState } from "react";
 import interiorImage1 from "../assets/images/664b4ee81818d3c38c5920e7_48-print-DSC_7650.jpg";
 import SEOHead from "../components/SEOHead";
@@ -11,7 +11,6 @@ const Contact: React.FC = () => {
     phone: "",
     subject: "",
     message: "",
-    service: "general",
   });
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -43,12 +42,6 @@ const Contact: React.FC = () => {
       subtitle: "Mon-Fri 9:00 AM - 6:00 PM",
     },
     {
-      icon: Mail,
-      title: "Email",
-      details: "info@grandemanorhomes.com",
-      subtitle: "We'll respond within 24 hours",
-    },
-    {
       icon: MapPin,
       title: "Office",
       details: "847 Wake Forest Business Park Ste 102, Wake Forest,  NC 27587",
@@ -60,15 +53,6 @@ const Contact: React.FC = () => {
       details: "Monday - Friday: 9:00 AM - 5:00 PM",
       subtitle: "Weekend: closed",
     },
-  ];
-
-  const serviceOptions = [
-    { value: "general", label: "General Inquiry" },
-    { value: "custom-build", label: "Custom Home Building" },
-    { value: "architecture", label: "Architectural Planning" },
-    { value: "interior-design", label: "Interior Design" },
-    { value: "renovation", label: "Renovation & Expansion" },
-    { value: "land-acquisition", label: "Land Acquisition" },
   ];
 
   const structuredData = {
@@ -132,7 +116,7 @@ const Contact: React.FC = () => {
       {/* Contact Info Cards */}
       <section className="py-20 bg-dark-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {contactInfo.map((info, index) => (
               <motion.div
                 key={info.title}
@@ -211,45 +195,22 @@ const Contact: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="phone"
-                      className="block text-sm font-medium text-dark-200 mb-2"
-                    >
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:outline-none focus:border-primary-500 transition-colors duration-200"
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="service"
-                      className="block text-sm font-medium text-dark-200 mb-2"
-                    >
-                      Service Interest
-                    </label>
-                    <select
-                      id="service"
-                      name="service"
-                      value={formData.service}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-white focus:outline-none focus:border-primary-500 transition-colors duration-200"
-                    >
-                      {serviceOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div>
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-medium text-dark-200 mb-2"
+                  >
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-dark-800 border border-dark-600 rounded-lg text-white placeholder-dark-400 focus:outline-none focus:border-primary-500 transition-colors duration-200"
+                    placeholder="(555) 123-4567"
+                  />
                 </div>
 
                 <div>
@@ -345,18 +306,6 @@ const Contact: React.FC = () => {
                     Design concept presentation
                   </li>
                 </ul>
-              </div>
-
-              <div className="bg-dark-800 p-6 rounded-lg">
-                <h3 className="text-xl font-semibold text-white mb-4">
-                  Response Time
-                </h3>
-                <p className="text-dark-300">
-                  We understand that premium home projects require prompt
-                  attention. Our team typically responds to all inquiries within
-                  24 hours during business days. For urgent matters, please call
-                  our direct line at (555) 123-4567.
-                </p>
               </div>
             </motion.div>
           </div>
