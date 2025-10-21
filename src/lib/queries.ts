@@ -15,7 +15,7 @@ export const GET_PROJECTS = `
         url
         fileName
       }
-      projectImages {
+      projectImages(first: 100) {
         url
         fileName
       }
@@ -39,7 +39,7 @@ export const GET_PROJECT_BY_ID = `
         url
         fileName
       }
-      projectImages {
+      projectImages(first: 100) {
         url
         fileName
       }
@@ -63,7 +63,7 @@ export const GET_PROJECTS_BY_TYPE = `
         url
         fileName
       }
-      projectImages {
+      projectImages(first: 100) {
         url
         fileName
       }
@@ -175,7 +175,7 @@ export const GET_PORTFOLIO_DATA = `
         url
         fileName
       }
-      projectImages {
+      projectImages(first: 100) {
         url
         fileName
       }

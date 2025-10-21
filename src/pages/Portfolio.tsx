@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Award,
   Bath,
@@ -6,20 +6,157 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Loader2,
   MapPin,
   Square,
   X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import heroImage1 from "../assets/images/664b4eeaf8db6d1a167016dc_3-print-DJI_0301.jpg";
 import SEOHead from "../components/SEOHead";
 // Import Hygraph service for CMS integration
 import { HygraphProject, hygraphService } from "../lib/hygraphService";
 
+// Image optimization utilities
+const optimizeImageUrl = (
+  url: string,
+  width?: number,
+  quality: number = 80
+) => {
+  if (!url) return url;
+
+  // For Hygraph images, add transformation parameters
+  if (url.includes("hygraph")) {
+    const params = new URLSearchParams();
+    if (width) params.set("w", width.toString());
+    params.set("q", quality.toString());
+    params.set("f", "webp"); // Use WebP format for better compression
+
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}${params.toString()}`;
+  }
+
+  return url;
+};
+
+// Preload images utility
+const preloadImage = (src: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve();
+    img.onerror = reject;
+    img.src = src;
+  });
+};
+
+// Optimized Image Component with lazy loading
+const OptimizedImage: React.FC<{
+  src: string;
+  alt: string;
+  className?: string;
+  width?: number;
+  quality?: number;
+  priority?: boolean;
+  objectFit?: "cover" | "contain";
+  onLoad?: () => void;
+  onError?: () => void;
+}> = ({
+  src,
+  alt,
+  className,
+  width,
+  quality = 80,
+  priority = false,
+  objectFit = "contain",
+  onLoad,
+  onError,
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [isInView, setIsInView] = useState(priority);
+
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  // Intersection Observer for lazy loading
+  useEffect(() => {
+    if (priority) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: "50px" }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [priority]);
+
+  // Load optimized image when in view
+  useEffect(() => {
+    if (isInView && src) {
+      const optimizedSrc = optimizeImageUrl(src, width, quality);
+      setImageSrc(optimizedSrc);
+    }
+  }, [isInView, src, width, quality]);
+
+  const handleLoad = () => {
+    setIsLoading(false);
+    onLoad?.();
+  };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setHasError(true);
+    onError?.();
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={imgRef}>
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-dark-800">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        </div>
+      )}
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-dark-800 text-dark-400">
+          <div className="text-center">
+            <Square className="h-12 w-12 mx-auto mb-2" />
+            <p className="text-sm">Image unavailable</p>
+          </div>
+        </div>
+      )}
+      {imageSrc && (
+        <img
+          src={imageSrc}
+          alt={alt}
+          className={`w-full h-full object-${objectFit} transition-opacity duration-300 ${
+            isLoading ? "opacity-0" : "opacity-100"
+          }`}
+          onLoad={handleLoad}
+          onError={handleError}
+          loading={priority ? "eager" : "lazy"}
+        />
+      )}
+    </div>
+  );
+};
+
 const Portfolio: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [preloadedImages, setPreloadedImages] = useState<Set<string>>(
+    new Set()
+  );
 
   // Hygraph CMS Integration
   const [hygraphProjects, setHygraphProjects] = useState<HygraphProject[]>([]);
@@ -141,21 +278,98 @@ const Portfolio: React.FC = () => {
     ? allProjects.find((p) => p.id === selectedProject)
     : null;
 
-  const nextImage = () => {
-    if (currentProject) {
-      setCurrentImageIndex((prev) =>
-        prev === currentProject.images.gallery.length - 1 ? 0 : prev + 1
-      );
-    }
-  };
+  // Enhanced carousel navigation with preloading
+  const nextImage = useCallback(async () => {
+    if (currentProject && !isTransitioning) {
+      setIsTransitioning(true);
+      const nextIndex =
+        currentImageIndex === currentProject.images.gallery.length - 1
+          ? 0
+          : currentImageIndex + 1;
 
-  const prevImage = () => {
-    if (currentProject) {
-      setCurrentImageIndex((prev) =>
-        prev === 0 ? currentProject.images.gallery.length - 1 : prev - 1
+      // Preload next image
+      const nextImageUrl = optimizeImageUrl(
+        currentProject.images.gallery[nextIndex],
+        1200,
+        85
       );
+      if (!preloadedImages.has(nextImageUrl)) {
+        try {
+          await preloadImage(nextImageUrl);
+          setPreloadedImages((prev) => new Set([...prev, nextImageUrl]));
+        } catch (error) {
+          console.warn("Failed to preload next image:", error);
+        }
+      }
+
+      setCurrentImageIndex(nextIndex);
+      setTimeout(() => setIsTransitioning(false), 300);
     }
-  };
+  }, [currentProject, currentImageIndex, isTransitioning, preloadedImages]);
+
+  const prevImage = useCallback(async () => {
+    if (currentProject && !isTransitioning) {
+      setIsTransitioning(true);
+      const prevIndex =
+        currentImageIndex === 0
+          ? currentProject.images.gallery.length - 1
+          : currentImageIndex - 1;
+
+      // Preload previous image
+      const prevImageUrl = optimizeImageUrl(
+        currentProject.images.gallery[prevIndex],
+        1200,
+        85
+      );
+      if (!preloadedImages.has(prevImageUrl)) {
+        try {
+          await preloadImage(prevImageUrl);
+          setPreloadedImages((prev) => new Set([...prev, prevImageUrl]));
+        } catch (error) {
+          console.warn("Failed to preload previous image:", error);
+        }
+      }
+
+      setCurrentImageIndex(prevIndex);
+      setTimeout(() => setIsTransitioning(false), 300);
+    }
+  }, [currentProject, currentImageIndex, isTransitioning, preloadedImages]);
+
+  // Preload adjacent images when project is selected
+  useEffect(() => {
+    if (currentProject && currentProject.images.gallery.length > 1) {
+      const preloadAdjacentImages = async () => {
+        const imagesToPreload = [];
+
+        // Preload next image
+        const nextIndex =
+          currentImageIndex === currentProject.images.gallery.length - 1
+            ? 0
+            : currentImageIndex + 1;
+        imagesToPreload.push(
+          optimizeImageUrl(currentProject.images.gallery[nextIndex], 1200, 85)
+        );
+
+        // Preload previous image
+        const prevIndex =
+          currentImageIndex === 0
+            ? currentProject.images.gallery.length - 1
+            : currentImageIndex - 1;
+        imagesToPreload.push(
+          optimizeImageUrl(currentProject.images.gallery[prevIndex], 1200, 85)
+        );
+
+        // Preload images in background
+        Promise.allSettled(
+          imagesToPreload.map((url) => preloadImage(url))
+        ).then(() => {
+          setPreloadedImages((prev) => new Set([...prev, ...imagesToPreload]));
+        });
+      };
+
+      preloadAdjacentImages();
+    }
+  }, [currentProject, currentImageIndex]);
 
   const openProject = (projectId: string | number) => {
     setSelectedProject(projectId.toString());
@@ -166,8 +380,36 @@ const Portfolio: React.FC = () => {
   const closeProject = () => {
     setSelectedProject(null);
     setCurrentImageIndex(0);
+    setIsTransitioning(false);
     document.body.style.overflow = "unset";
   };
+
+  // Keyboard navigation for carousel
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!selectedProject || isTransitioning) return;
+
+      switch (event.key) {
+        case "ArrowLeft":
+          event.preventDefault();
+          prevImage();
+          break;
+        case "ArrowRight":
+          event.preventDefault();
+          nextImage();
+          break;
+        case "Escape":
+          event.preventDefault();
+          closeProject();
+          break;
+      }
+    };
+
+    if (selectedProject) {
+      document.addEventListener("keydown", handleKeyDown);
+      return () => document.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [selectedProject, isTransitioning, nextImage, prevImage]);
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -200,10 +442,14 @@ const Portfolio: React.FC = () => {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img
+          <OptimizedImage
             src={heroImage1}
             alt="Luxury home portfolio showcase"
-            className="w-full h-full object-cover"
+            className="w-full h-full"
+            width={1920}
+            quality={90}
+            priority={true}
+            objectFit="cover"
           />
           <div className="absolute inset-0 bg-dark-900/70"></div>
         </div>
@@ -300,10 +546,13 @@ const Portfolio: React.FC = () => {
                       onClick={() => openProject(project.id)}
                     >
                       <div className="relative overflow-hidden rounded-lg bg-dark-800">
-                        <img
+                        <OptimizedImage
                           src={project.images.main}
                           alt={project.title}
-                          className="w-full h-80 object-cover group-hover:scale-110 transition-transform duration-700"
+                          className="w-full h-80 group-hover:scale-110 transition-transform duration-700"
+                          width={600}
+                          quality={85}
+                          objectFit="cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-dark-900/90 via-transparent to-transparent"></div>
 
@@ -422,35 +671,82 @@ const Portfolio: React.FC = () => {
                 </button>
               </div>
 
-              {/* Image Gallery */}
-              <div className="relative">
-                <img
-                  src={currentProject.images.gallery[currentImageIndex]}
-                  alt={`${currentProject.title} - Image ${
-                    currentImageIndex + 1
-                  }`}
-                  className="w-full h-96 object-cover"
-                />
+              {/* Enhanced Image Gallery */}
+              <div className="relative overflow-hidden">
+                <div className="relative h-96 sm:h-[28rem] md:h-[32rem] lg:h-[36rem] xl:h-[40rem] 2xl:h-[44rem]">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentImageIndex}
+                      initial={{ opacity: 0, x: 50 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -50 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="absolute inset-0"
+                    >
+                      <OptimizedImage
+                        src={currentProject.images.gallery[currentImageIndex]}
+                        alt={`${currentProject.title} - Image ${
+                          currentImageIndex + 1
+                        }`}
+                        className="w-full h-full"
+                        width={1200}
+                        quality={90}
+                        priority={true}
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
 
                 {currentProject.images.gallery.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-dark-900/80 hover:bg-dark-900 text-white p-2 rounded-full transition-colors duration-200"
+                      disabled={isTransitioning}
+                      className={`absolute left-4 top-1/2 transform -translate-y-1/2 bg-dark-900/80 hover:bg-dark-900 text-white p-3 rounded-full transition-all duration-200 ${
+                        isTransitioning
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:scale-110"
+                      }`}
                     >
                       <ChevronLeft className="h-6 w-6" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-dark-900/80 hover:bg-dark-900 text-white p-2 rounded-full transition-colors duration-200"
+                      disabled={isTransitioning}
+                      className={`absolute right-4 top-1/2 transform -translate-y-1/2 bg-dark-900/80 hover:bg-dark-900 text-white p-3 rounded-full transition-all duration-200 ${
+                        isTransitioning
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:scale-110"
+                      }`}
                     >
                       <ChevronRight className="h-6 w-6" />
                     </button>
 
                     {/* Image Counter */}
-                    <div className="absolute bottom-4 right-4 bg-dark-900/80 text-white px-3 py-1 rounded-full text-sm">
+                    <div className="absolute bottom-4 right-4 bg-dark-900/80 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
                       {currentImageIndex + 1} /{" "}
                       {currentProject.images.gallery.length}
+                    </div>
+
+                    {/* Thumbnail Navigation */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+                      {currentProject.images.gallery.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => {
+                            if (!isTransitioning) {
+                              setIsTransitioning(true);
+                              setCurrentImageIndex(index);
+                              setTimeout(() => setIsTransitioning(false), 300);
+                            }
+                          }}
+                          className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                            index === currentImageIndex
+                              ? "bg-primary-500 scale-125"
+                              : "bg-white/50 hover:bg-white/80"
+                          }`}
+                        />
+                      ))}
                     </div>
                   </>
                 )}

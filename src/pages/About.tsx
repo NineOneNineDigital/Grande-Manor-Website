@@ -215,7 +215,7 @@ const About: React.FC = () => {
                 with each generation.
               </p>
               <p className="text-lg text-dark-300 mb-8">
-                Today, Chris and Matt Davis lead the company with the same
+                Today, Chris Davis and Matt Cyrus lead the company with the same
                 dedication to construction excellence that have been established
                 by the previous generations. The family's deep roots in the
                 construction industry, combined with their commitment to
