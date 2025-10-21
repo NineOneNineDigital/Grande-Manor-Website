@@ -673,7 +673,7 @@ const Portfolio: React.FC = () => {
 
               {/* Enhanced Image Gallery */}
               <div className="relative overflow-hidden">
-                <div className="relative h-96 sm:h-[28rem] md:h-[32rem] lg:h-[36rem] xl:h-[40rem] 2xl:h-[44rem]">
+                <div className="relative flex items-center justify-center bg-dark-900 min-h-[24rem] max-h-[44rem]">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentImageIndex}
@@ -681,17 +681,18 @@ const Portfolio: React.FC = () => {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -50 }}
                       transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="absolute inset-0"
+                      className="w-full h-full flex items-center justify-center"
                     >
                       <OptimizedImage
                         src={currentProject.images.gallery[currentImageIndex]}
                         alt={`${currentProject.title} - Image ${
                           currentImageIndex + 1
                         }`}
-                        className="w-full h-full"
+                        className="max-w-full max-h-full"
                         width={1200}
                         quality={90}
                         priority={true}
+                        objectFit="contain"
                       />
                     </motion.div>
                   </AnimatePresence>
